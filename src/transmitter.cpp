@@ -40,12 +40,21 @@ struct ControllerFrame {
   uint16_t buttons;
 };
 
+struct ButtonMap {
+  uint16_t ps2Button;
+  uint16_t mask;
+};
+
 PS2X ps2x;
 
 int lxCenter = -1;
 int lyCenter = -1;
 int rxCenter = -1;
 int ryCenter = -1;
+
+ControllerFrame latestFrame;
+bool lastSendSuccess = false;
+unsigned long packetsSent = 0;
 
 int getAverage(byte button, uint16_t avgNum = 100) {
   int sum = 0;
@@ -76,7 +85,7 @@ ControllerFrame readController() {
   frame.ry = scaleJoystick(ps2x.Analog(PSS_RY) - ryCenter, -132, 123);
 
   // Buttons
-  const uint8_t buttons[][2] = {
+  const ButtonMap buttons[] = {
     {PSB_PAD_UP, BTN_UP},
     {PSB_PAD_RIGHT, BTN_RIGHT},
     {PSB_PAD_DOWN, BTN_DOWN},
@@ -98,24 +107,20 @@ ControllerFrame readController() {
   frame.buttons = 0;
 
   for (const auto& button : buttons) {
-    if (ps2x.Button(button[0])) {
-      frame.buttons |= button[1];
+    if (ps2x.Button(button.ps2Button)) {
+      frame.buttons |= button.mask;
     }
   }
 
   return frame;
 }
 
-void onDataSent(
-  const uint8_t* mac_addr,
-  esp_now_send_status_t status) {
-
-  Serial.print("ESP-NOW: ");
-
+void onDataSent(const uint8_t* mac_addr, esp_now_send_status_t status) {
   if (status == ESP_NOW_SEND_SUCCESS) {
-    Serial.println("Success");
+    lastSendSuccess = true;
+    packetsSent++;
   } else {
-    Serial.println("Failed");
+    lastSendSuccess = false;
   }
 }
 
@@ -168,16 +173,16 @@ void setup() {
 }
 
 void loop() {
-  ControllerFrame frame = readController();
+  latestFrame = readController();
 
-  esp_err_t result = esp_now_send(receiverMac, (uint8_t*)&frame, sizeof(frame));
+  esp_err_t result = esp_now_send(receiverMac, (uint8_t*)&latestFrame, sizeof(latestFrame));
 
   if (result != ESP_OK) {
     Serial.print("Send error: ");
     Serial.println(result);
   }
 
-  Serial.printf("LX(%d), LY(%d), RX(%d), RY(%d), BUTTONS(0x%04X)\n", frame.lx, frame.ly, frame.rx, frame.ry, frame.buttons);
+  Serial.printf("SUCCESS(%d), COUNT(%lu), LX(%04d), LY(%04d), RX(%04d), RY(%04d), BUTTONS(0x%04X)\n", lastSendSuccess, packetsSent, latestFrame.lx, latestFrame.ly, latestFrame.rx, latestFrame.ry, latestFrame.buttons);
 
   delay(50);
 }
