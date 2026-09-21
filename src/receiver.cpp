@@ -2,6 +2,8 @@
 #include <WiFi.h>
 #include <esp_now.h>
 
+#define WEB_SERVER_USED 0
+
 #define LED_PIN 4
 
 #define FRAME_DEBUG false
@@ -87,32 +89,12 @@ void actions() {
       "R1(%d), R2(%d), R3(%d), "
       "SELECT(%d), START(%d), "
       "LX(%d), LY(%d), RX(%d), RY(%d)\n",
-
-      upPressed,
-      rightPressed,
-      downPressed,
-      leftPressed,
-
-      trianglePressed,
-      circlePressed,
-      crossPressed,
-      squarePressed,
-
-      L1Pressed,
-      L2Pressed,
-      L3Pressed,
-
-      R1Pressed,
-      R2Pressed,
-      R3Pressed,
-
-      selectPressed,
-      startPressed,
-
-      lxDirection,
-      lyDirection,
-      rxDirection,
-      ryDirection);
+      upPressed, rightPressed, downPressed, leftPressed,
+      trianglePressed, circlePressed, crossPressed, squarePressed,
+      L1Pressed, L2Pressed, L3Pressed,
+      R1Pressed, R2Pressed, R3Pressed,
+      selectPressed, startPressed,
+      lxDirection, lyDirection, rxDirection, ryDirection);
   }
 
   Serial.println(L2Pressed);
@@ -131,9 +113,14 @@ void setup() {
 
   delay(1000);
 
-  WiFi.mode(WIFI_STA);
+#if WEB_SERVER_USED
+  WiFi.mode(WIFI_AP_STA);
   WiFi.softAP("Receiver_Track", "12345678", WIFI_CHANNEL, 1);
   WiFi.disconnect();
+#else
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+#endif
 
   Serial.println();
   Serial.println("Receiver");

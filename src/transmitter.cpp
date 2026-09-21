@@ -1,8 +1,13 @@
 #include <Arduino.h>
 #include <PS2X_lib.h>
-#include <WebServer.h>
 #include <WiFi.h>
 #include <esp_now.h>
+
+#define ENABLE_WEB_SERVER 0
+
+#if ENABLE_WEB_SERVER
+#include <WebServer.h>
+#endif
 
 #define PS2_DAT 23
 #define PS2_CMD 19
@@ -32,8 +37,11 @@
 
 uint8_t receiverMac[] = {0x80, 0xF3, 0xDA, 0x5D, 0x65, 0x68};
 
+#if ENABLE_WEB_SERVER
 const char* ssid = "Controller";
 const char* password = "12345678";
+#endif
+
 const int WIFI_CHANNEL = 1;
 
 struct ControllerFrame {
@@ -51,7 +59,9 @@ struct ButtonMap {
 };
 
 PS2X ps2x;
+#if ENABLE_WEB_SERVER
 WebServer server(80);
+#endif
 
 int lxCenter = -1;
 int lyCenter = -1;
@@ -130,212 +140,77 @@ void onDataSent(const uint8_t* mac_addr, esp_now_send_status_t status) {
   }
 }
 
+#if ENABLE_WEB_SERVER
 void handleRoot() {
-
   String html = R"rawliteral(
-
 <!DOCTYPE html>
 <html>
-
 <head>
-
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<title>ESP32 Controller</title>
-
-<style>
-
-body {
-  font-family: Arial, sans-serif;
-  background: #111;
-  color: white;
-  text-align: center;
-  margin: 0;
-  padding: 20px;
-}
-
-h1 {
-  margin-bottom: 25px;
-}
-
-.container {
-  max-width: 500px;
-  margin: auto;
-}
-
-.card {
-  background: #222;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 15px;
-}
-
-.value {
-  font-size: 32px;
-  font-weight: bold;
-}
-
-.label {
-  color: #aaa;
-  font-size: 14px;
-}
-
-.joysticks {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.status {
-  font-size: 20px;
-}
-
-.success {
-  color: #00ff88;
-}
-
-.failed {
-  color: #ff4444;
-}
-
-</style>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 Controller</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: white; text-align: center; margin: 0; padding: 20px }
+    h1 { margin-bottom: 25px; }
+    .container { max-width: 500px; margin: auto; }
+    .card { background: #222; border-radius: 12px; padding: 20px; margin-bottom: 15px; }
+    .value { font-size: 32px; font-weight: bold; }
+    .label { color: #aaa; font-size: 14px; }
+    .joysticks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .status { font-size: 20px; }
+    .success { color: #00ff88; }
+    .failed { color: #ff4444; }
+  </style>
 </head>
-
-
 <body>
-
-<div class="container">
-
-<h1>ESP32 Controller</h1>
-
-
-<div class="card">
-
-<h2>Joysticks</h2>
-
-<div class="joysticks">
-
-<div>
-<div class="label">LX</div>
-<div class="value" id="lx">0</div>
-</div>
-
-<div>
-<div class="label">LY</div>
-<div class="value" id="ly">0</div>
-</div>
-
-<div>
-<div class="label">RX</div>
-<div class="value" id="rx">0</div>
-</div>
-
-<div>
-<div class="label">RY</div>
-<div class="value" id="ry">0</div>
-</div>
-
-</div>
-
-</div>
-
-
-<div class="card">
-
-<h2>Buttons</h2>
-
-<div class="value" id="buttons">
-0x0000
-</div>
-
-</div>
-
-
-<div class="card">
-
-<h2>ESP-NOW</h2>
-
-<div id="status" class="status">
-Waiting...
-</div>
-
-<p>
-Packets sent:
-<span id="packets">0</span>
-</p>
-
-</div>
-
-</div>
-
-
-<script>
-
-async function updateData() {
-
-  try {
-
-    const response = await fetch('/data');
-
-    const data = await response.json();
-
-
-    document.getElementById('lx').textContent = data.lx;
-    document.getElementById('ly').textContent = data.ly;
-    document.getElementById('rx').textContent = data.rx;
-    document.getElementById('ry').textContent = data.ry;
-
-    document.getElementById('buttons').textContent =
-      '0x' + data.buttons.toString(16).padStart(4, '0').toUpperCase();
-
-    document.getElementById('packets').textContent =
-      data.packets;
-
-
-    const status = document.getElementById('status');
-
-    if (data.success) {
-
-      status.textContent = 'Connected';
-      status.className = 'status success';
-
-    } else {
-
-      status.textContent = 'Send failed';
-      status.className = 'status failed';
-
+  <div class="container">
+    <h1>ESP32 Controller</h1>
+    <div class="card">
+      <h2>Joysticks</h2>
+      <div class="joysticks">
+        <div><div class="label">LX</div><div class="value" id="lx">0</div></div>
+        <div><div class="label">LY</div><div class="value" id="ly">0</div></div>
+        <div><div class="label">RX</div><div class="value" id="rx">0</div></div>
+        <div><div class="label">RY</div><div class="value" id="ry">0</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Buttons</h2>
+      <div class="value" id="buttons">0x0000</div>
+    </div>
+    <div class="card">
+      <h2>ESP-NOW</h2>
+      <div id="status" class="status">Waiting...</div>
+      <p>Packets sent:<span id="packets">0</span>
+      </p>
+    </div>
+  </div>
+  <script>
+    async function updateData() {
+      try {
+        const response = await fetch('/data');
+        const data = await response.json();
+        document.getElementById('lx').textContent = data.lx;
+        document.getElementById('ly').textContent = data.ly;
+        document.getElementById('rx').textContent = data.rx;
+        document.getElementById('ry').textContent = data.ry;
+        document.getElementById('buttons').textContent = '0x' + data.buttons.toString(16).padStart(4, '0').toUpperCase();
+        document.getElementById('packets').textContent = data.packets;
+        const status = document.getElementById('status');
+        if (data.success) { status.textContent = 'Connected'; status.className = 'status success'; } 
+        else { status.textContent = 'Send failed'; status.className = 'status failed'; }
+      }
+      catch (error) { console.log(error); }
     }
-
-  }
-
-  catch (error) {
-
-    console.log(error);
-
-  }
-
-}
-
-
-setInterval(updateData, 100);
-
-updateData();
-
-</script>
-
-
+    setInterval(updateData, 100);
+    updateData();
+  </script>
 </body>
-
 </html>
-
 )rawliteral";
-
   server.send(200, "text/html", html);
 }
 
 void handleData() {
-
   char json[200];
 
   snprintf(
@@ -353,20 +228,17 @@ void handleData() {
     latestFrame.buttons,
 
     lastSendSuccess ? "true" : "false",
-
     packetsSent);
 
-  server.send(
-    200,
-    "application/json",
-    json);
+  server.send(200, "application/json", json);
 }
+#endif
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  // WiFi.mode(WIFI_STA);
+#if ENABLE_WEB_SERVER
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ssid, password, WIFI_CHANNEL);
 
@@ -375,15 +247,16 @@ void setup() {
   Serial.println(IP);
   Serial.print("SSID: ");
   Serial.println(ssid);
+  Serial.print("Password: ");
+  Serial.println(password);
 
-  server.on(
-    "/",
-    handleRoot);
-
-  server.on(
-    "/data",
-    handleData);
+  server.on("/", handleRoot);
+  server.on("/data", handleData);
   server.begin();
+#else
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+#endif
 
   Serial.print("Transmitter MAC: ");
   Serial.println(WiFi.macAddress());
@@ -399,7 +272,12 @@ void setup() {
   memcpy(peerInfo.peer_addr, receiverMac, 6);
   peerInfo.channel = WIFI_CHANNEL;
   peerInfo.encrypt = false;
+
+#if ENABLE_WEB_SERVER
   peerInfo.ifidx = WIFI_IF_AP;
+#else
+  peerInfo.ifidx = WIFI_IF_STA;
+#endif
 
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {
     Serial.println("Failed to add ESP-NOW peer!");
@@ -428,7 +306,9 @@ void setup() {
 }
 
 void loop() {
+#if ENABLE_WEB_SERVER
   server.handleClient();
+#endif
   latestFrame = readController();
 
   esp_err_t result = esp_now_send(receiverMac, (uint8_t*)&latestFrame, sizeof(latestFrame));
@@ -438,7 +318,7 @@ void loop() {
     Serial.println(result);
   }
 
-  Serial.printf("SUCCESS(%d), COUNT(%lu), LX(%04d), LY(%04d), RX(%04d), RY(%04d), BUTTONS(0x%04X)\n", lastSendSuccess, packetsSent, latestFrame.lx, latestFrame.ly, latestFrame.rx, latestFrame.ry, latestFrame.buttons);
+  Serial.printf("WEB_SERVER(%d), SUCCESS(%d), COUNT(%lu), LX(%04d), LY(%04d), RX(%04d), RY(%04d), BUTTONS(0x%04X)\n", ENABLE_WEB_SERVER, lastSendSuccess, packetsSent, latestFrame.lx, latestFrame.ly, latestFrame.rx, latestFrame.ry, latestFrame.buttons);
 
   delay(50);
 }
