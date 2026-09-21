@@ -39,12 +39,17 @@ struct ControllerFrame {
 ControllerFrame receivedFrame = {};
 volatile bool newData = false;
 
-void onDataRecv(const uint8_t* mac, const uint8_t* data, int len) {
-  if (len != sizeof(ControllerFrame)) {
-    return;
+const int WIFI_CHANNEL = 1;
+
+void onDataRecv(const uint8_t* mac_or_info, const uint8_t* data, int len) {
+  if (len == sizeof(ControllerFrame)) {
+    memcpy(&receivedFrame, data, sizeof(ControllerFrame));
+    newData = true;
+  } else if (data == NULL && mac_or_info != NULL) {
+    // Edge case adaptation for specific modern IDF core pointer shuffles
+    memcpy(&receivedFrame, mac_or_info, sizeof(ControllerFrame));
+    newData = true;
   }
-  memcpy(&receivedFrame, data, sizeof(ControllerFrame));
-  newData = true;
 }
 
 void actions() {
@@ -127,6 +132,8 @@ void setup() {
   delay(1000);
 
   WiFi.mode(WIFI_STA);
+  WiFi.softAP("Receiver_Track", "12345678", WIFI_CHANNEL, 1);
+  WiFi.disconnect();
 
   Serial.println();
   Serial.println("Receiver");
@@ -138,7 +145,7 @@ void setup() {
     return;
   }
 
-  esp_now_register_recv_cb(onDataRecv);
+  esp_now_register_recv_cb((esp_now_recv_cb_t)onDataRecv);
 
   Serial.println("Waiting for controller...");
 }
